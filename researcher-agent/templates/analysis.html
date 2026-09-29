@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Analysis - {{ paper.title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Paper Analysis</h1>
+    <p><a href="{{ url_for('pages.reader', paper_id=paper.id) }}">{{ paper.title }}</a></p>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="analyzeBtn">{{ 'Re-run analysis' if analysis else 'Analyze paper' }}</button>
+  </div>
+</div>
+{% if paper.ingestion_status not in ['chunked','text_only'] %}
+<div class="alert alert-warn">Full text has not been imported for this paper. The analysis will be based on the abstract only, and most sections will be marked "Not found".</div>
+{% endif %}
+<div id="alerts"></div>
+<div class="card" id="analysisBox">
+{% if analysis %}<div class="small muted">Generated {{ analysis.created_at }} by {{ analysis.model_used }}</div>{% else %}<p class="muted">No analysis yet. Click "Analyze paper".</p>{% endif %}
+<div id="claims"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const paperId = {{ paper.id }};
+const initial = {{ (analysis.sections if analysis else [])|tojson }};
+function render(sections){
+  document.getElementById("claims").innerHTML = sections.map(s => `
+    <div class="claim-block">
+      <h4>${escapeHtml(s.section)} ${statusBadge(s.status)}</h4>
+      <div>${escapeHtml(s.claim)} ${s.status==='NOT_FOUND' ? '' : `<button class="btn small secondary" data-simple="${encodeURIComponent(s.claim||'')}">Explain simply</button>`}</div>
+      <div class="simple small"></div>
+      ${s.evidence ? `<div class="evidence ${evidenceClass(s.status)}">${escapeHtml(s.evidence)} <span class="muted small">[${escapeHtml(s.evidence_location||'section unspecified')}]</span> ${s.evidence_verified===true?'<span class="badge badge-explicit">quote found in paper text</span>':(s.evidence_verified===false?'<span class="badge badge-inferred">quote not verified</span>':'')}</div>` : `<div class="small muted">No supporting evidence found in the paper.</div>`}
+      ${s.note ? `<div class="small muted">Note: ${escapeHtml(s.note)}</div>` : ''}
+    </div>`).join("");
+}
+render(initial);
+document.getElementById("analyzeBtn").addEventListener("click", async (e) => {
+  setLoading(e.target, true, "Analyzing...");
+  try { const r = await apiPost(`/api/papers/${paperId}/analyze`, {force: true}); render(r.sections); }
+  catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); }
+  finally { setLoading(e.target, false); }
+});
+document.getElementById("claims").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-simple]"); if(!b) return;
+  const out = b.closest(".claim-block").querySelector(".simple");
+  setLoading(b, true, "...");
+  try { const r = await apiPost(`/api/papers/${paperId}/explain-simply`, {text: decodeURIComponent(b.dataset.simple)}); out.innerHTML = `<em>In simple terms:</em> ${escapeHtml(r.simplified)}`; }
+  catch(err){ out.textContent = err.message; }
+  finally { setLoading(b, false); }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Paper Search - Researcher Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Paper Search</h1>
+    <p>Searches Semantic Scholar, Crossref, and arXiv directly. Nothing here is invented - if a field (DOI, PDF, citation count) isn't returned by the source, it's left blank.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="inline-fields">
+    <div class="field" style="flex:3">
+      <label for="q">Keyword, title, or topic</label>
+      <input type="text" id="q" placeholder="e.g. prompt injection detection">
+    </div>
+    <div class="field">
+      <label for="author">Author</label>
+      <input type="text" id="author" placeholder="optional">
+    </div>
+    <div class="field">
+      <label for="year">Year</label>
+      <input type="number" id="year" placeholder="optional">
+    </div>
+  </div>
+  <div class="inline-fields" style="align-items:center">
+    <div class="field" style="flex:2">
+      <label>Sources</label>
+      <div class="checkbox-row"><label><input type="checkbox" class="src" value="semantic_scholar" checked> Semantic Scholar</label></div>
+      <div class="checkbox-row"><label><input type="checkbox" class="src" value="crossref" checked> Crossref</label></div>
+      <div class="checkbox-row"><label><input type="checkbox" class="src" value="arxiv" checked> arXiv</label></div>
+    </div>
+    <div class="field">
+      <label><input type="checkbox" id="oa"> Open-access PDF only</label>
+    </div>
+    <div class="field" style="align-self:flex-end">
+      <button class="btn" id="searchBtn">Search</button>
+    </div>
+  </div>
+</div>
+
+<div id="alerts"></div>
+<div id="results"></div>
+
+{% if history %}
+<div class="card">
+  <h3 class="mt-0">Recent searches</h3>
+  {% for h in history %}
+    <div class="small claim-block"><strong>{{ h.query }}</strong> <span class="muted">- {{ h.result_count }} results - {{ h.created_at }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}

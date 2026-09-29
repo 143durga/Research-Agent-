@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Researcher Agent{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">Researcher Agent</div>
+    <div class="brand-sub">AI + Cloud + Security research workspace</div>
+    <nav>
+      <a href="{{ url_for('pages.dashboard') }}" class="{{ 'active' if request.endpoint=='pages.dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('pages.search_page') }}" class="{{ 'active' if request.endpoint=='pages.search_page' }}">Paper Search</a>
+      <a href="{{ url_for('pages.library') }}" class="{{ 'active' if request.endpoint=='pages.library' }}">My Library</a>
+      <div class="nav-group-label">WORKSPACE</div>
+      <a href="{{ url_for('pages.compare_page') }}" class="{{ 'active' if request.endpoint=='pages.compare_page' }}">Compare Papers</a>
+      <a href="{{ url_for('pages.gaps_page') }}" class="{{ 'active' if request.endpoint=='pages.gaps_page' }}">Research Gap Finder</a>
+      <a href="{{ url_for('pages.questions_page') }}" class="{{ 'active' if request.endpoint=='pages.questions_page' }}">Research Questions</a>
+      <a href="{{ url_for('pages.experiments_page') }}" class="{{ 'active' if request.endpoint=='pages.experiments_page' }}">Experiment Planner</a>
+      <a href="{{ url_for('pages.literature_review_page') }}" class="{{ 'active' if request.endpoint=='pages.literature_review_page' }}">Literature Review</a>
+      <div class="nav-group-label">ORGANIZE</div>
+      <a href="{{ url_for('pages.projects_page') }}" class="{{ 'active' if request.endpoint in ['pages.projects_page','pages.project_detail'] }}">Research Projects</a>
+      <a href="{{ url_for('pages.settings_page') }}" class="{{ 'active' if request.endpoint=='pages.settings_page' }}">Settings</a>
+    </nav>
+  </aside>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Research Gap Finder{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Research Gap Finder</h1><p>Results are <strong>potential</strong> gaps based on the reviewed literature. Each piece of evidence is labelled as an author-stated limitation, author-stated future work, or the agent's own synthesis.</p></div></div>
+<div id="alerts"></div>
+<div class="card">
+  {% for p in papers %}<div class="checkbox-row"><label><input type="checkbox" class="pp" value="{{ p.id }}"> {{ p.title }}</label></div>{% else %}<p class="muted">No papers in library yet.</p>{% endfor %}
+  {% if papers %}
+  <div class="inline-fields" style="margin-top:10px;align-items:flex-end">
+    <div class="field"><label for="projSel">Save results to project (optional)</label>
+      <select id="projSel"><option value="">No project</option>{% for pr in projects %}<option value="{{ pr.id }}">{{ pr.title }}</option>{% endfor %}</select></div>
+    <div class="field" style="flex:0"><button class="btn" id="gapBtn">Find potential gaps</button></div>
+  </div>{% endif %}
+</div>
+<div id="gapList">
+{% for g in gaps %}
+  <div class="card" data-gap="{{ g.id }}">
+    <span class="badge badge-source">{{ g.gap_type }} gap</span>
+    {% if g.project_id %}<span class="badge badge-muted">In project #{{ g.project_id }}</span>{% endif %}
+    <p style="margin-top:8px">{{ g.description }}</p>
+    <div class="small muted">Supporting paper ids: {{ g.supporting_paper_ids|join(', ') }}</div>
+    {% for e in g.evidence %}
+      <div class="evidence {{ 'explicit' if e.statement_type != 'AGENT_IDENTIFIED_POTENTIAL_GAP' else 'inferred' }}">{{ e.quote_or_paraphrase }}
+        <div class="small muted">[paper {{ e.paper_id }}{{ ', ' ~ e.section if e.section }}]
+          {% if e.statement_type == 'AUTHOR_STATED_LIMITATION' %}<span class="badge badge-explicit">Author-stated limitation</span>
+          {% elif e.statement_type == 'AUTHOR_STATED_FUTURE_WORK' %}<span class="badge badge-explicit">Author-stated future work</span>
+          {% else %}<span class="badge badge-inferred">Agent-identified potential gap</span>{% endif %}
+          {% if e.quote_verified %}<span class="badge badge-muted">quote found in paper text</span>{% else %}<span class="badge badge-muted">quote not found verbatim</span>{% endif %}
+        </div></div>
+    {% endfor %}
+    <p class="small"><strong>Why it appears unresolved (agent reasoning):</strong> {{ g.rationale }}</p>
+    <p class="small"><strong>Potential research question:</strong> {{ g.potential_question }}</p>
+    <div class="inline-fields" style="align-items:flex-end">
+      <div class="field"><label>Save to project</label>
+        <select class="linkSel"><option value="">— none —</option>{% for pr in projects %}<option value="{{ pr.id }}" {{ 'selected' if pr.id == g.project_id }}>{{ pr.title }}</option>{% endfor %}</select></div>
+      <div class="field" style="flex:0"><button class="btn small secondary linkBtn">Save</button></div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const alertsEl = document.getElementById("alerts");
+document.getElementById("gapBtn")?.addEventListener("click", async (e) => {
+  const ids = [...document.querySelectorAll(".pp:checked")].map(x=>parseInt(x.value));
+  const proj = document.getElementById("projSel").value;
+  if(!ids.length){ showAlert(alertsEl,"Select at least one paper.", "error"); return; }
+  setLoading(e.target,true,"Analyzing...");
+  try {
+    const r = await apiPost("/api/gaps/find",{paper_ids:ids, project_id: proj?parseInt(proj):null});
+    if(!r.gaps.length) { showAlert(alertsEl,"No gaps could be supported by verifiable evidence in these papers' text.","warn"); setLoading(e.target,false); }
+    else window.location.reload();
+  } catch(err){ showAlert(alertsEl, err.message, "error"); setLoading(e.target,false); }
+});
+document.querySelectorAll(".linkBtn").forEach(btn => btn.addEventListener("click", async () => {
+  const card = btn.closest("[data-gap]"); const v = card.querySelector(".linkSel").value;
+  setLoading(btn,true,"...");
+  try { await apiPost(`/api/gaps/${card.dataset.gap}/project`, {project_id: v?parseInt(v):null}); showAlert(alertsEl, v ? "Saved to project." : "Removed from project.", "ok"); }
+  catch(err){ showAlert(alertsEl, err.message, "error"); }
+  finally { setLoading(btn,false); }
+}));
+</script>
+{% endblock %}

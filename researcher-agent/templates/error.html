@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="empty-state"><h2>{{ code }}</h2><p>{{ message }}</p><a class="btn" href="{{ url_for('pages.dashboard') }}">Back to dashboard</a></div>
+{% endblock %}

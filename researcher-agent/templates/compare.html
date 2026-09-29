@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Compare Papers{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Compare Papers</h1><p>Select 2-10 papers. The comparison describes differences and trade-offs; it never ranks a paper as "best".</p></div></div>
+<div id="alerts"></div>
+{% if papers|length < 2 %}<div class="empty-state"><h3>Need at least two papers</h3><p>Add papers in <a href="{{ url_for('pages.library') }}">My Library</a>.</p></div>
+{% else %}
+<div class="card">
+  {% for p in papers %}<div class="checkbox-row"><label><input type="checkbox" class="pp" value="{{ p.id }}"> {{ p.title }} <span class="muted small">{{ p.year or '' }}</span></label></div>{% endfor %}
+  <div style="margin-top:10px"><button class="btn" id="cmpBtn">Compare selected</button></div>
+</div>
+{% endif %}
+<div id="out"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const dims = ["problem","objective","methodology","model","dataset","evaluation_metrics","results","limitations","contributions","future_work"];
+const list = (t, a) => a && a.length ? `<div class="card"><h3 class="mt-0">${t}</h3><ul>${a.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul></div>` : "";
+document.getElementById("cmpBtn")?.addEventListener("click", async (e) => {
+  const ids = [...document.querySelectorAll(".pp:checked")].map(x=>parseInt(x.value));
+  setLoading(e.target,true,"Comparing...");
+  try {
+    const r = await apiPost("/api/compare",{paper_ids:ids});
+    const head = `<tr><th>Dimension</th>${r.comparison_table.map(p=>`<th>${escapeHtml(p.title)}</th>`).join("")}</tr>`;
+    const rows = dims.map(d=>`<tr><th>${d.replace(/_/g," ")}</th>${r.comparison_table.map(p=>{const c=p[d]||{};return `<td>${escapeHtml(c.value||'—')}<div>${statusBadge(c.status)}</div>${c.evidence?`<div class="evidence ${evidenceClass(c.status)}">${escapeHtml(c.evidence)}</div>`:''}</td>`}).join("")}</tr>`).join("");
+    document.getElementById("out").innerHTML = `<div class="card" style="overflow-x:auto"><table>${head}${rows}</table></div>` +
+      list("Common themes", r.common_themes)+list("Differences", r.differences)+list("Conflicting findings", r.conflicting_findings)+
+      list("Different datasets", r.different_datasets)+list("Different evaluation approaches", r.different_evaluation_approaches)+list("Research opportunities", r.research_opportunities);
+  } catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); }
+  finally { setLoading(e.target,false); }
+});
+</script>
+{% endblock %}

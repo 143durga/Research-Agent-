@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Research Projects{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Research Projects</h1><p>Bundle papers, gaps, questions and experiment plans.</p></div></div>
+<div id="alerts"></div>
+<div class="card">
+  <div class="inline-fields">
+    <div class="field" style="flex:2"><label>Title</label><input type="text" id="ptitle" placeholder="Secure RAG Systems in Cloud Environments"></div>
+    <div class="field" style="flex:3"><label>Research objective</label><input type="text" id="pobj"></div>
+    <div class="field" style="align-self:flex-end"><button class="btn" id="createBtn">Create project</button></div>
+  </div>
+</div>
+{% for p in projects %}
+<div class="card">
+  <h3 class="mt-0"><a href="{{ url_for('pages.project_detail', project_id=p.id) }}">{{ p.title }}</a></h3>
+  <p class="small">{{ p.objective or 'No objective set.' }}</p>
+  <div class="small muted">{{ p.papers|length }} papers · {{ p.gap_count }} gaps · {{ p.question_count }} questions</div>
+</div>
+{% else %}<div class="empty-state"><h3>No projects yet</h3></div>{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("createBtn").addEventListener("click", async () => {
+  const t = document.getElementById("ptitle").value.trim();
+  if(!t){ showAlert(document.getElementById("alerts"),"Title is required."); return; }
+  try { await apiPost("/api/projects",{title:t, objective:document.getElementById("pobj").value}); window.location.reload(); }
+  catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Researcher Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p>Your research library at a glance.</p>
+  </div>
+</div>
+
+{% if not llm_configured %}
+<div class="alert alert-warn">
+  No LLM provider is configured, so analysis, chat, comparison, gap-finding, and question generation
+  will not run yet. Add an API key in <a href="{{ url_for('pages.settings_page') }}">Settings</a> / your
+  <code>.env</code> file to enable them. Search and library management work without one.
+</div>
+{% endif %}
+
+<div class="grid grid-3" style="margin-bottom:20px">
+  <div class="card stat"><span class="num">{{ total_papers }}</span><span class="label">Total papers in library</span></div>
+  <div class="card stat"><span class="num">{{ projects|length }}</span><span class="label">Active research projects</span></div>
+  <div class="card stat"><span class="num">{{ recent_questions|length }}</span><span class="label">Saved research questions</span></div>
+</div>
+
+<div class="card">
+  <h3 class="mt-0">Quick actions</h3>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('pages.search_page') }}">Search Papers</a>
+    <a class="btn secondary" href="{{ url_for('pages.library') }}">Upload PDF</a>
+    <a class="btn secondary" href="{{ url_for('pages.library') }}">Analyze Paper</a>
+    <a class="btn secondary" href="{{ url_for('pages.compare_page') }}">Compare Papers</a>
+    <a class="btn secondary" href="{{ url_for('pages.gaps_page') }}">Find Research Gaps</a>
+    <a class="btn secondary" href="{{ url_for('pages.projects_page') }}">Create Research Project</a>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title-row"><h3 class="mt-0 mb-0">Recently added papers</h3><a class="small" href="{{ url_for('pages.library') }}">View library</a></div>
+    {% if recent_papers %}
+      {% for p in recent_papers %}
+        <div class="claim-block">
+          <h4><a href="{{ url_for('pages.reader', paper_id=p.id) }}">{{ p.title }}</a></h4>
+          <div class="small muted">{{ p.authors|join(', ') if p.authors else 'Authors unknown' }} {{ '· ' ~ p.year|string if p.year }} {{ '· ' ~ p.source if p.source }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted small">No papers yet. Start with <a href="{{ url_for('pages.search_page') }}">Paper Search</a>.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title-row"><h3 class="mt-0 mb-0">Active research projects</h3><a class="small" href="{{ url_for('pages.projects_page') }}">View all</a></div>
+    {% if projects %}
+      {% for proj in projects %}
+        <div class="claim-block">
+          <h4><a href="{{ url_for('pages.project_detail', project_id=proj.id) }}">{{ proj.title }}</a></h4>
+          <div class="small muted">{{ proj.objective or 'No objective set yet.' }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted small">No projects yet. <a href="{{ url_for('pages.projects_page') }}">Create one</a>.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title-row"><h3 class="mt-0 mb-0">Recent analyses</h3></div>
+    {% if recent_analyses %}
+      {% for a in recent_analyses %}
+        <div class="claim-block small">
+          <a href="{{ url_for('pages.analysis_page', paper_id=a.paper_id) }}">{{ a.paper_title }}</a>
+          <div class="muted">{{ a.created_at }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted small">No analyses generated yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title-row"><h3 class="mt-0 mb-0">Saved research questions</h3></div>
+    {% if recent_questions %}
+      {% for q in recent_questions %}
+        <div class="claim-block small">{{ q.question }}</div>
+      {% endfor %}
+    {% else %}
+      <p class="muted small">No research questions generated yet. Try the <a href="{{ url_for('pages.gaps_page') }}">Gap Finder</a> first.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if topics %}
+<div class="card">
+  <h3 class="mt-0">Research topics in your library</h3>
+  {% for t in topics %}<span class="tag-pill">{{ t }}</span>{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

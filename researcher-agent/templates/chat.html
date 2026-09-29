@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Chat - {{ paper.title }}{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Chat with paper</h1><p><a href="{{ url_for('pages.reader', paper_id=paper.id) }}">{{ paper.title }}</a></p></div></div>
+{% if paper.ingestion_status != 'chunked' %}<div class="alert alert-warn">{% if paper.ingestion_status == 'text_only' %}Some embeddings are missing for this paper; answers may be incomplete. Use Re-embed after fixing the embedding provider.{% else %}No full text imported yet, so answers cannot be grounded. Import the PDF first.{% endif %}</div>{% endif %}
+<div id="alerts"></div>
+<div class="chat-window" id="chat">
+{% for m in history %}
+  <div class="chat-msg {{ m.role }}"><div class="bubble">{{ m.content }}</div>
+  {% if m.evidence %}<div class="cites">Evidence: {% for e in m.evidence %}[{{ e.section or 'unknown' }}, p.{{ e.page or '?' }}] {% endfor %}</div>{% endif %}</div>
+{% endfor %}
+</div>
+<div class="inline-fields">
+  <input type="text" id="question" placeholder="e.g. What dataset did they use?" style="flex:4">
+  <button class="btn" id="askBtn">Ask</button>
+</div>
+<div class="btn-row small" style="margin-top:8px">
+  {% for q in ["What problem does this paper solve?","What dataset did they use?","What metrics were used?","What are the limitations?","What future work did the authors mention?","What can I reproduce?"] %}
+  <button class="btn small secondary sugg">{{ q }}</button>{% endfor %}
+</div>
+<div id="evidencePanel" class="card" style="margin-top:14px;display:none"><h3 class="mt-0">Retrieved evidence</h3><div id="evList"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const paperId = {{ paper.id }};
+const chat = document.getElementById("chat");
+function add(role, text, ev){
+  const d = document.createElement("div"); d.className = "chat-msg "+role;
+  d.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>` + (ev && ev.length ? `<div class="cites">Evidence: ${ev.map(e=>`[${escapeHtml(e.section||'unknown')}, p.${e.page||'?'}]`).join(" ")}</div>` : "");
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+}
+async function ask(q){
+  if(!q.trim()) return; add("user", q); document.getElementById("question").value="";
+  const btn = document.getElementById("askBtn"); setLoading(btn,true,"...");
+  try {
+    const r = await apiPost(`/api/papers/${paperId}/chat`, {question:q});
+    add("assistant", r.answer, r.evidence);
+    document.getElementById("evidencePanel").style.display = r.evidence.length ? "block":"none";
+    document.getElementById("evList").innerHTML = r.evidence.map(e=>`<div class="evidence explicit">${escapeHtml(e.snippet)}… <span class="muted small">[${escapeHtml(e.section||'unknown')}, p.${e.page||'?'}, score ${e.score}]</span></div>`).join("");
+  } catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); }
+  finally { setLoading(btn,false); }
+}
+document.getElementById("askBtn").onclick = () => ask(document.getElementById("question").value);
+document.getElementById("question").addEventListener("keydown", e => { if(e.key==="Enter") ask(e.target.value); });
+document.querySelectorAll(".sugg").forEach(b => b.onclick = () => ask(b.textContent));
+chat.scrollTop = chat.scrollHeight;
+</script>
+{% endblock %}

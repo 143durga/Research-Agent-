@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }}{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>{{ project.title }}</h1><p>{{ project.objective or 'No objective set.' }}</p></div></div>
+<div id="alerts"></div>
+<div class="card">
+  <h3 class="mt-0">Selected papers / references</h3>
+  {% for p in project.papers %}<div class="claim-block small"><a href="{{ url_for('pages.reader', paper_id=p.id) }}">{{ p.title }}</a> <span class="muted">{{ p.year or '' }} {{ '· DOI ' ~ p.doi if p.doi }}</span></div>{% else %}<p class="muted small">No papers added.</p>{% endfor %}
+  <form onsubmit="return false" class="inline-fields" style="margin-top:8px"><input type="number" id="addPid" placeholder="Paper id to add"><button class="btn small" id="addPaperBtn">Add paper</button></form>
+</div>
+<div class="card"><h3 class="mt-0">Research gaps</h3>{% for g in gaps %}<div class="claim-block small"><span class="badge badge-source">{{ g.gap_type }}</span> {{ g.description }}</div>{% else %}<p class="muted small">None yet. Run the Gap Finder with a project id via the API, or use the Gap Finder page.</p>{% endfor %}</div>
+<div class="card"><h3 class="mt-0">Research questions</h3>{% for q in questions %}<div class="claim-block small">{{ q.question }}</div>{% else %}<p class="muted small">None yet.</p>{% endfor %}</div>
+<div class="card"><h3 class="mt-0">Experiment plans (proposed)</h3>{% for p in plans %}<div class="claim-block small">{{ p.hypothesis }}</div>{% else %}<p class="muted small">None yet.</p>{% endfor %}</div>
+<div class="card"><h3 class="mt-0">Notes</h3>{% for n in project.notes %}<div class="claim-block small">{{ n.content }}</div>{% endfor %}
+<textarea id="pnote" rows="2"></textarea><div style="margin-top:6px"><button class="btn small" id="pnoteBtn">Save note</button></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const pid = {{ project.id }};
+document.getElementById("addPaperBtn").onclick = async () => {
+  try { await apiPost(`/api/projects/${pid}/papers`,{paper_id:parseInt(document.getElementById("addPid").value)}); window.location.reload(); }
+  catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); }
+};
+document.getElementById("pnoteBtn").onclick = async () => {
+  const v = document.getElementById("pnote").value.trim(); if(!v) return;
+  await apiPost(`/api/projects/${pid}/notes`,{content:v}); window.location.reload();
+};
+</script>
+{% endblock %}

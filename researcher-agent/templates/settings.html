@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Settings</h1><p>Providers are configured with environment variables in <code>.env</code>. Keys never reach the browser.</p></div></div>
+<div class="card"><h3 class="mt-0">LLM provider</h3>
+<p>Provider: <strong>{{ llm_provider_name }}</strong> · Model: <code>{{ llm_model }}</code> · {% if llm_configured %}<span class="badge badge-explicit">API key configured</span>{% else %}<span class="badge badge-notfound">No API key (set LLM_API_KEY)</span>{% endif %}</p></div>
+<div class="card"><h3 class="mt-0">Retrieval mode</h3>
+<p>Active: <strong>{{ retrieval.mode.replace('_',' ') }}</strong> · provider <code>{{ retrieval.provider }}</code>{% if retrieval.model %} · model <code>{{ retrieval.model }}</code>{% endif %}</p>
+{% if retrieval.mode == 'lexical_fallback' %}<div class="alert alert-warn mb-0">{{ retrieval.description }}. Chat retrieval is based on shared words, so paraphrased questions may miss relevant passages. Set EMBEDDING_API_KEY for semantic retrieval, then use Re-embed on each paper.</div>
+{% else %}<div class="alert alert-ok mb-0">{{ retrieval.description }}.</div>{% endif %}</div>
+<div class="card"><h3 class="mt-0">Access control</h3><p>{% if api_locked %}<span class="badge badge-explicit">JSON API requires X-API-Key</span>{% else %}<span class="badge badge-inferred">JSON API is open (localhost use only)</span>{% endif %} The app binds to 127.0.0.1 by default and has no login page.</p></div>
+<div class="card"><h3 class="mt-0">Library</h3><p>{{ total_papers }} papers, {{ chunked_papers }} with full text ingested.</p></div>
+{% endblock %}

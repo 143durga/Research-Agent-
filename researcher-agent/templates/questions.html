@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Research Questions{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Research Questions</h1><p>Generated from evidence in the selected papers (and optionally a saved gap). Methods, datasets and metrics are <strong>proposals</strong>, not claims made by the papers.</p></div></div>
+<div id="alerts"></div>
+<div class="card">
+  {% for p in papers %}<div class="checkbox-row"><label><input type="checkbox" class="pp" value="{{ p.id }}"> {{ p.title }}</label></div>{% else %}<p class="muted">No papers in library yet.</p>{% endfor %}
+  {% if papers %}
+  <div class="inline-fields" style="margin-top:10px;align-items:flex-end">
+    <div class="field"><label for="gapSel">Base on a saved gap (optional)</label>
+      <select id="gapSel"><option value="">None</option>{% for g in gaps %}<option value="{{ g.id }}">{{ g.gap_type }}: {{ g.description[:80] }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="projSel">Save to project (optional)</label>
+      <select id="projSel"><option value="">No project</option>{% for pr in projects %}<option value="{{ pr.id }}">{{ pr.title }}</option>{% endfor %}</select></div>
+    <div class="field" style="flex:0"><button class="btn" id="qBtn">Generate questions</button></div>
+  </div>{% endif %}
+</div>
+{% for q in questions %}
+<div class="card" data-q="{{ q.id }}">
+  <h3 class="mt-0">{{ q.question }}</h3>
+  <span class="badge badge-muted">Difficulty: {{ q.difficulty }}</span>
+  {% if q.project_id %}<span class="badge badge-muted">In project #{{ q.project_id }}</span>{% endif %}
+  <p class="small"><strong>Motivation:</strong> {{ q.motivation }}</p>
+  <p class="small"><strong>Supporting papers:</strong> {{ q.supporting_paper_ids|join(', ') or 'none listed' }}</p>
+  {% if q.evidence.text %}<div class="evidence {{ 'explicit' if q.evidence.verified else 'inferred' }}">{{ q.evidence.text }}
+    <div class="small muted">{% if q.evidence.verified %}<span class="badge badge-explicit">quote found in paper text</span>{% elif q.evidence.verified == false %}<span class="badge badge-inferred">quote not verified</span>{% endif %}</div></div>{% endif %}
+  <p class="small"><strong>Proposed method:</strong> {{ q.possible_method }}</p>
+  <p class="small"><strong>Proposed dataset:</strong> {{ q.possible_dataset }}</p>
+  <p class="small"><strong>Proposed metrics:</strong> {{ q.possible_metrics }}</p>
+  <p class="small"><strong>Open assumptions:</strong> {{ q.open_assumptions }}</p>
+  <div class="inline-fields" style="align-items:flex-end">
+    <div class="field"><label>Save to project</label>
+      <select class="linkSel"><option value="">— none —</option>{% for pr in projects %}<option value="{{ pr.id }}" {{ 'selected' if pr.id == q.project_id }}>{{ pr.title }}</option>{% endfor %}</select></div>
+    <div class="field" style="flex:0"><button class="btn small secondary linkBtn">Save</button></div>
+    <div class="field" style="flex:0"><a class="btn small secondary" href="{{ url_for('pages.experiments_page') }}">Plan experiment</a></div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+const alertsEl = document.getElementById("alerts");
+document.getElementById("qBtn")?.addEventListener("click", async (e) => {
+  const ids = [...document.querySelectorAll(".pp:checked")].map(x=>parseInt(x.value));
+  const gap = document.getElementById("gapSel").value, proj = document.getElementById("projSel").value;
+  if(!ids.length && !gap){ showAlert(alertsEl,"Select at least one paper or a saved gap.", "error"); return; }
+  setLoading(e.target,true,"Generating...");
+  try {
+    const r = await apiPost("/api/questions/generate",{paper_ids:ids, gap_id: gap?parseInt(gap):null, project_id: proj?parseInt(proj):null});
+    if(!r.questions.length){ showAlert(alertsEl, "No acceptable questions were produced (generic or unsupported ones are rejected). Try more papers or a saved gap.", "warn"); setLoading(e.target,false); }
+    else window.location.reload();
+  } catch(err){ showAlert(alertsEl, err.message, "error"); setLoading(e.target,false); }
+});
+document.querySelectorAll(".linkBtn").forEach(btn => btn.addEventListener("click", async () => {
+  const card = btn.closest("[data-q]"); const v = card.querySelector(".linkSel").value;
+  setLoading(btn,true,"...");
+  try { await apiPost(`/api/questions/${card.dataset.q}/project`, {project_id: v?parseInt(v):null}); showAlert(alertsEl, v ? "Saved to project." : "Removed from project.", "ok"); }
+  catch(err){ showAlert(alertsEl, err.message, "error"); }
+  finally { setLoading(btn,false); }
+}));
+</script>
+{% endblock %}

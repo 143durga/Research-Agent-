@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ paper.title }} - Reader{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ paper.title }}</h1>
+    <p>{{ paper.authors|join(', ') if paper.authors else 'Authors unknown' }} {{ '· ' ~ paper.year|string if paper.year }} {{ '· ' ~ paper.venue if paper.venue }}</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn secondary" href="{{ url_for('pages.analysis_page', paper_id=paper.id) }}">Analyze</a>
+    <a class="btn secondary" href="{{ url_for('pages.chat_page', paper_id=paper.id) }}">Chat with paper</a>
+  </div>
+</div>
+
+<div class="reader-layout">
+  <div>
+    <div class="card">
+      <h3 class="mt-0">Abstract</h3>
+      <p>{{ paper.abstract or 'No abstract available from the source.' }}</p>
+      <div class="small muted">
+        {% if paper.doi %}DOI: <a href="https://doi.org/{{ paper.doi|urlencode }}" target="_blank" rel="noopener noreferrer">{{ paper.doi }}</a> · {% endif %}
+        {% if paper.source_url %}<a href="{{ paper.source_url|safe_url }}" target="_blank" rel="noopener noreferrer">Source page</a> · {% endif %}
+        {% if paper.pdf_url %}<a href="{{ paper.pdf_url|safe_url }}" target="_blank" rel="noopener noreferrer">PDF link</a>{% endif %}
+      </div>
+    </div>
+
+    {% if sections %}
+    <div class="card">
+      <h3 class="mt-0">Extracted sections</h3>
+      <div class="section-tabs" id="secTabs">
+        {% for s in sections %}
+          <button data-target="sec-{{ loop.index }}" class="{{ 'active' if loop.first }}">{{ s.section_name.replace('_',' ')|title }}</button>
+        {% endfor %}
+      </div>
+      {% for s in sections %}
+        <div class="sec-pane" id="sec-{{ loop.index }}" style="{{ '' if loop.first else 'display:none' }}">
+          <div class="small muted" style="margin-bottom:6px">Pages {{ s.page_start }}-{{ s.page_end }}</div>
+          <p style="white-space:pre-wrap">{{ s.content }}</p>
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>No full text imported yet</h3>
+      <p>Import the PDF (from search) or upload it in My Library to extract sections, enable chat, and run analysis grounded in the full text.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h3 class="mt-0">Source &amp; provenance</h3>
+      {% if citations %}
+        {% for c in citations %}
+          <div class="small claim-block">
+            <div><strong>{{ c.source_type }}</strong></div>
+            <div class="muted">{{ c.publication or '' }} {{ '· ' ~ c.year|string if c.year }}</div>
+            {% if c.doi %}<div>DOI: {{ c.doi }}</div>{% endif %}
+            {% if c.source_url %}<a href="{{ c.source_url|safe_url }}" target="_blank" rel="noopener noreferrer">{{ c.source_url }}</a>{% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="small muted">No source metadata recorded.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3 class="mt-0">Tags</h3>
+      <div style="margin-bottom:8px">{% for t in paper.tags %}<span class="tag-pill">{{ t }}</span>{% endfor %}</div>
+      <div class="inline-fields">
+        <input type="text" id="tagInput" placeholder="add a tag">
+        <button class="btn small secondary" id="addTagBtn">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="mt-0">Notes</h3>
+      <div id="notesList">
+        {% for n in notes %}<div class="claim-block small">{{ n.content }}<div class="muted">{{ n.created_at }}</div></div>{% endfor %}
+      </div>
+      <textarea id="noteInput" rows="3" placeholder="Add a note about this paper..."></textarea>
+      <div style="margin-top:6px"><button class="btn small" id="addNoteBtn">Save note</button></div>
+    </div>
+
+    <div class="card">
+      <h3 class="mt-0">Highlights / evidence saved</h3>
+      <div id="highlightsList">
+        {% for h in highlights %}<div class="evidence explicit">"{{ h.quote }}" <span class="muted small">({{ h.section or 'unspecified section' }})</span></div>{% endfor %}
+      </div>
+      <textarea id="highlightInput" rows="2" placeholder="Paste an important quote/evidence to save..."></textarea>
+      <div style="margin-top:6px"><button class="btn small" id="addHighlightBtn">Save highlight</button></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const paperId = {{ paper.id }};
+document.getElementById("secTabs")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-target]");
+  if (!btn) return;
+  document.querySelectorAll(".section-tabs button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".sec-pane").forEach(p => p.style.display = "none");
+  btn.classList.add("active");
+  document.getElementById(btn.dataset.target).style.display = "block";
+});
+
+document.getElementById("addTagBtn").addEventListener("click", async () => {
+  const input = document.getElementById("tagInput");
+  if (!input.value.trim()) return;
+  await apiPost(`/api/papers/${paperId}/tags`, { name: input.value.trim() });
+  window.location.reload();
+});
+document.getElementById("addNoteBtn").addEventListener("click", async () => {
+  const input = document.getElementById("noteInput");
+  if (!input.value.trim()) return;
+  await apiPost(`/api/papers/${paperId}/notes`, { content: input.value.trim() });
+  window.location.reload();
+});
+document.getElementById("addHighlightBtn").addEventListener("click", async () => {
+  const input = document.getElementById("highlightInput");
+  if (!input.value.trim()) return;
+  await apiPost(`/api/papers/${paperId}/highlights`, { quote: input.value.trim() });
+  window.location.reload();
+});
+</script>
+{% endblock %}

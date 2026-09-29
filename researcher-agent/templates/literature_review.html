@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Literature Review{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Literature Review</h1><p>Group papers into themes and write your own synthesis notes. These fields are yours to edit; nothing is auto-filled.</p></div></div>
+<div id="alerts"></div>
+{% if not projects %}<div class="empty-state"><h3>Create a project first</h3><p><a href="{{ url_for('pages.projects_page') }}">Research Projects</a></p></div>
+{% else %}
+<div class="card">
+  <div class="inline-fields">
+    <div class="field"><label>Project</label><select id="proj">{% for p in projects %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Theme</label><input type="text" id="theme" placeholder="e.g. Prompt-injection defenses"></div>
+  </div>
+  <label>Papers in this theme</label>
+  {% for p in papers %}<div class="checkbox-row"><label><input type="checkbox" class="pp" value="{{ p.id }}"> {{ p.title }}</label></div>{% endfor %}
+  <div class="grid grid-2" style="margin-top:10px">
+    <div class="field"><label>Agreement</label><textarea id="agree" rows="3"></textarea></div>
+    <div class="field"><label>Disagreement</label><textarea id="disagree" rows="3"></textarea></div>
+    <div class="field"><label>Evolution over time</label><textarea id="evol" rows="3"></textarea></div>
+    <div class="field"><label>Limitations</label><textarea id="lim" rows="3"></textarea></div>
+  </div>
+  <div class="field"><label>Open questions / notes</label><textarea id="oq" rows="3"></textarea></div>
+  <button class="btn" id="saveBtn">Save theme</button>
+</div>
+{% endif %}
+{% for r in reviews %}
+<div class="card"><h3 class="mt-0">{{ r.theme }}</h3><div class="small muted">Papers: {{ r.papers|join(', ') }}</div>
+<p class="small"><strong>Agreement:</strong> {{ r.agreement }}</p><p class="small"><strong>Disagreement:</strong> {{ r.disagreement }}</p>
+<p class="small"><strong>Evolution:</strong> {{ r.evolution }}</p><p class="small"><strong>Limitations:</strong> {{ r.limitations }}</p>
+<p class="small"><strong>Open questions:</strong> {{ r.open_questions }}</p></div>
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("saveBtn")?.addEventListener("click", async (e) => {
+  const g = id => document.getElementById(id).value;
+  try { await apiPost("/api/literature-review",{project_id:parseInt(g("proj")),theme:g("theme"),paper_ids:[...document.querySelectorAll(".pp:checked")].map(x=>parseInt(x.value)),agreement:g("agree"),disagreement:g("disagree"),evolution:g("evol"),limitations:g("lim"),open_questions:g("oq")}); window.location.reload(); }
+  catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); }
+});
+</script>
+{% endblock %}

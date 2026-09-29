@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}My Library - Researcher Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My Library</h1>
+    <p>Every paper you've saved or imported. DOI is used to avoid duplicate entries.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h3 class="mt-0">Upload a PDF</h3>
+  <div class="inline-fields">
+    <div class="field" style="flex:2">
+      <label for="uploadTitle">Title (optional - defaults to filename)</label>
+      <input type="text" id="uploadTitle" placeholder="Paper title">
+    </div>
+    <div class="field">
+      <label for="uploadFile">PDF file (max 25MB)</label>
+      <input type="file" id="uploadFile" accept="application/pdf">
+    </div>
+    <div class="field" style="align-self:flex-end">
+      <button class="btn" id="uploadBtn">Upload &amp; Ingest</button>
+    </div>
+  </div>
+  <div id="uploadAlerts"></div>
+</div>
+
+{% if papers %}
+<div class="grid grid-2">
+  {% for p in papers %}
+    <div class="paper-item">
+      <div class="title"><a href="{{ url_for('pages.reader', paper_id=p.id) }}">{{ p.title }}</a></div>
+      <div class="meta">{{ p.authors|join(', ') if p.authors else 'Authors unknown' }} {{ '· ' ~ p.year|string if p.year }} {{ '· ' ~ p.venue if p.venue }}</div>
+      <div style="margin:6px 0">
+        <span class="badge badge-source">{{ p.source or 'unknown source' }}</span>
+        {% if p.ingestion_status == 'chunked' %}<span class="badge badge-explicit">Full text ingested</span>
+        {% elif p.ingestion_status == 'text_only' %}<span class="badge badge-inferred">Text only - embeddings missing</span>
+        {% elif p.ingestion_status == 'failed' %}<span class="badge badge-notfound">Ingestion failed</span>
+        {% else %}<span class="badge badge-muted">Metadata only</span>{% endif %}
+        {% for t in p.tags %}<span class="tag-pill">{{ t }}</span>{% endfor %}
+      </div>
+      <div class="actions">
+        <a class="btn small secondary" href="{{ url_for('pages.reader', paper_id=p.id) }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('pages.analysis_page', paper_id=p.id) }}">Analyze</a>
+        <a class="btn small secondary" href="{{ url_for('pages.chat_page', paper_id=p.id) }}">Chat</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <h3>Your library is empty</h3>
+  <p>Search for papers and save them, or upload a PDF above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+  const fileInput = document.getElementById("uploadFile");
+  const alerts = document.getElementById("uploadAlerts");
+  if (!fileInput.files.length) { showAlert(alerts, "Choose a PDF file first.", "error"); return; }
+  const btn = document.getElementById("uploadBtn");
+  setLoading(btn, true, "Uploading...");
+  const form = new FormData();
+  form.append("file", fileInput.files[0]);
+  form.append("title", document.getElementById("uploadTitle").value);
+  try {
+    const resp = await fetch("/api/papers/upload", { method: "POST", body: form });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Upload failed");
+    showAlert(alerts, `Ingested: ${data.summary.chunks_created} chunks across ${data.summary.sections_found} detected sections.`, "ok");
+    setTimeout(() => window.location.href = `/paper/${data.paper_id}`, 900);
+  } catch (e) {
+    showAlert(alerts, e.message, "error");
+    setLoading(btn, false);
+  }
+});
+</script>
+{% endblock %}

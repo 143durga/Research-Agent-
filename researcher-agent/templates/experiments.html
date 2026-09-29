@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Experiment Planner{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Experiment Planner</h1><p>Plans are <strong>proposed designs</strong>. No experiment has been run and no results exist.</p></div></div>
+<div id="alerts"></div>
+{% if questions %}
+<div class="card">
+  <div class="field"><label>Research question</label><select id="qSel">{% for q in questions %}<option value="{{ q.id }}">{{ q.question[:120] }}</option>{% endfor %}</select></div>
+  <button class="btn" id="planBtn">Generate experiment plan</button>
+</div>
+{% else %}<div class="empty-state"><h3>No research questions yet</h3><p>Generate some on the <a href="{{ url_for('pages.questions_page') }}">Research Questions</a> page.</p></div>{% endif %}
+{% for p in plans %}
+<div class="card">
+  <span class="badge badge-inferred">Proposed plan - not executed, no results exist</span>
+  {% if p.research_question %}<h3>Research question</h3><p>{{ p.research_question }}</p>{% endif %}
+  <h3>Hypothesis</h3><p>{{ p.hypothesis }}</p>
+  <table>
+    <tr><th>Independent variables</th><td>{{ p.independent_variables }}</td></tr>
+    <tr><th>Dependent variables</th><td>{{ p.dependent_variables }}</td></tr>
+    <tr><th>Dataset (proposed)</th><td>{{ p.dataset }}</td></tr>
+    <tr><th>Baseline</th><td>{{ p.baseline }}</td></tr>
+    <tr><th>Proposed method</th><td>{{ p.proposed_method }}</td></tr>
+    <tr><th>Experimental groups</th><td>{{ p.experimental_groups|join('; ') }}</td></tr>
+    <tr><th>Metrics</th><td>{{ p.metrics|join('; ') }}</td></tr>
+    <tr><th>Evaluation procedure</th><td>{{ p.evaluation_procedure }}</td></tr>
+    <tr><th>Ablation study</th><td>{{ p.ablation_study }}</td></tr>
+    <tr><th>Reproducibility</th><td>{{ p.reproducibility_requirements }}</td></tr>
+    <tr><th>Threats to validity</th><td>{{ p.threats_to_validity }}</td></tr>
+  </table>
+</div>
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("planBtn")?.addEventListener("click", async (e) => {
+  setLoading(e.target,true,"Planning...");
+  try { await apiPost("/api/experiments/plan",{question_id: parseInt(document.getElementById("qSel").value)}); window.location.reload(); }
+  catch(err){ showAlert(document.getElementById("alerts"), err.message, "error"); setLoading(e.target,false); }
+});
+</script>
+{% endblock %}
