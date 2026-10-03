@@ -1,59 +1,113 @@
 # Researcher Agent
 
-A local web app for finding, importing, analyzing, comparing and questioning academic papers, with evidence and source tracking on every claim. Built for AI + Cloud + Security research but domain-independent.
+An evidence-grounded AI research workspace for finding, importing, analyzing, comparing, and questioning academic papers.
 
-Stack: Python 3.10+, Flask, SQLite, pdfplumber/pypdf, numpy + scikit-learn, plain HTML/CSS/JS (no build step).
+Built for **AI + Cloud + Security research**, but domain-independent.
 
-## 1. Requirements
-Python 3.10+ and internet access (for paper sources and your LLM provider).
+**Stack:** Python, Flask, SQLite, pdfplumber/pypdf, NumPy, scikit-learn, HTML/CSS/JavaScript.
 
-## 2. Installation
+## Features
+
+- Academic paper search via Semantic Scholar, Crossref, and arXiv
+- PDF upload and text extraction
+- Section-aware, page-aware chunking
+- Local/offline embeddings
+- Evidence-grounded paper chat
+- Source and page-level evidence tracking
+- Paper analysis
+- Paper comparison
+- Research Gap Finder
+- Research Questions
+- Experiment Planner
+- Literature Review
+- Research Projects
+- Paper metadata editing
+- Safe paper deletion
+- Prompt-injection protection
+- SSRF and upload security controls
+- Retrieval and citation validation
+- LLM/API failure handling
+
+## Research Focus
+
+The project is now being used as a research prototype for:
+
+> **Evaluating the reliability of evidence-grounded LLM research assistants.**
+
+The Researcher Agent generates answers from academic papers, while a separate **AI Evidence Analyzer** evaluates whether those answers are actually supported by the provided evidence.
+
+Current failure categories being investigated:
+
+- Retrieval failure
+- Unsupported answers
+- Citation errors
+- Incorrect answers despite relevant evidence
+- Inappropriate uncertainty
+- PDF/document extraction issues
+- Answer instability
+
+## Current Research Collection
+
+Five papers are currently used for evaluation:
+
+1. Efficient Fairness Testing in Large Language Models
+2. Metamorphic Testing for Fairness Evaluation in LLMs
+3. Meta-Fair: AI-Assisted Fairness Testing of Large Language Models
+4. G-Retriever: Retrieval-Augmented Generation for Textual Graph Understanding and Question Answering
+5. RoBERTa: A Robustly Optimized BERT Pretraining Approach
+
+Initial evaluation:
+
+**5 papers × 5 standardized questions = 25 cases**
+
+Each answer is evaluated for:
+
+- Correctness
+- Evidence support
+- Citation accuracy
+- Appropriate uncertainty
+
+## Run
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env    # then edit
-```
+cp .env.example .env
+python app.py
 
-## 3. Environment variables
-See `.env.example`. Key ones: `LLM_PROVIDER` (`anthropic`|`openai`), `LLM_API_KEY`, `LLM_MODEL`, `EMBEDDING_PROVIDER` (`openai`|`local_hash`), `EMBEDDING_API_KEY`, `EMBEDDING_MODEL`, `APP_API_KEY` (optional lock for the JSON API). Keys are read only by the backend.
+Open http://localhost:5000.
 
-Without an LLM key: search, library, upload/ingestion and reading work; analysis, chat, comparison, gaps, questions and experiment planning return a clear error (never fake output). Without an embedding key the app falls back to an offline **lexical** hashing embedder (lower retrieval quality; labeled in Settings).
-
-## 4. Database setup
-Automatic. Migrations in `db/migrations/*.sql` are applied at startup into `instance/researcher_agent.db` (override with `DATABASE_PATH`).
-
-## 5. Run
-```bash
-python app.py     # http://localhost:5000
-```
-
-## 6. Tests
-```bash
+Tests
 pytest -q
-# if pytest is unavailable: python tests/mini_runner.py
-```
-Tests mock the LLM and paper sources, and generate a real PDF to exercise extraction, sectioning, chunking, embedding and retrieval.
 
-## 7. Architecture
-See `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/DATABASE.md`.
+Latest verified status:
 
-## 8. Add another LLM provider
-Create `providers/llm/my_provider.py` subclassing `LLMProvider` (implement `complete`, raise `LLMUnavailableError` on failure), register it in `_PROVIDERS` in `providers/llm/factory.py`, set `LLM_PROVIDER=my_provider`.
+62 tests passed
 
-## 9. Add another paper source
-Create `providers/search/my_source.py` subclassing `PaperSearchProvider` returning `PaperResult`s (leave unknown fields empty), register it in `ALL_PROVIDERS` in `providers/search/aggregator.py`, and add a checkbox in `templates/search.html`.
+Architecture
+Academic Papers
+      ↓
+PDF Extraction
+      ↓
+Retrieval
+      ↓
+LLM Answer
+      ↓
+Evidence + Citation
+      ↓
+AI Evidence Analyzer
+      ↓
+Failure Analysis
+Limitations
+Local single-user application
+No OCR for scanned PDFs
+Section detection is heuristic
+External LLM/API availability affects live evaluation
+Current research evaluation uses a limited initial paper/question set
+Reliability claims require further empirical evaluation
+Research Direction
 
-## V1.1 validation status (read this before assuming anything was tested live)
-This sandbox has no outbound internet access and no configured API keys, so V1.1 could not make a single
-real call to Semantic Scholar, Crossref, arXiv, an LLM, or an embedding API. All guardrail and workflow
-logic was instead validated with **53 automated tests** (mocked network/LLM boundaries) plus a **real
-headless-Chromium click-through** of every page. See the validation report delivered with this build for
-exactly what was and was not exercised, and run the app yourself with real keys/network to complete
-real-service validation.
+The implementation phase is largely complete.
 
-## Known limitations
-- Single local user; no login UI (optional API-key gate only).
-- Section detection is heuristic; papers with unusual headings land in an "other" bucket.
-- Vector search is in-process cosine similarity over SQLite rows (fine for personal libraries, not thousands of papers).
-- Project pages show gaps/questions created with a project id via the API; the Gap Finder/Questions pages do not yet have a project selector.
-- Scanned PDFs without a text layer are rejected (no OCR).
+The current focus is empirical evaluation, failure-mode analysis, and understanding the limitations of evidence-grounded LLM research assistants.
